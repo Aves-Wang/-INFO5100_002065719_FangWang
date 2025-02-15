@@ -1,1 +1,117 @@
+public class Test {
+    public static void main(String[] args) {
+        Shape[] shapes = new Shape[4];
+        shapes[0] = new Triangle(3, 4, 5);
+        shapes[1] = new Rectangle(5, 4);
+        shapes[2] = new Circle(3);
+        shapes[3] = new Square(4);
+        for (Shape shape : shapes) {
+            shape.displayInfo();
+            System.out.println("Default color: " + Shape.defaultColor);
+            System.out.println();
+        }
+    }
+}
 
+abstract class Shape {
+    protected static String defaultColor = "Black";
+    public abstract double calculateArea();
+    public abstract double calculatePerimeter();
+
+    public void displayInfo() {
+        System.out.println("This is a " + this.getClass().getSimpleName() + " shape.");
+        System.out.println("Area: " + calculateArea());
+        System.out.println("Perimeter: " + calculatePerimeter());
+    }
+}
+
+public class Triangle extends Shape {
+
+    private double side1,side2,side3;
+
+
+    public Triangle( double side1,double side2,double side3) {
+
+        this.side1 = side1;
+        this.side2 = side2;
+        this.side3 = side3;
+    }
+    @Override
+    public double calculateArea() {
+
+        double s = (side1 + side2 + side3) / 2;
+        return Math.sqrt(s * (s - side1) * (s - side2) * (s - side3));
+    }
+
+    @Override
+    public double calculatePerimeter() {
+
+        return side1 + side2 + side3;
+    }
+}
+
+public class Rectangle extends Shape {
+
+    private double width;
+    private double length;
+
+    public Rectangle( double width, double length) {
+
+        this.width = width;
+        this.length = length;
+    }
+    @Override
+    public double calculateArea(){
+
+        return width * length;
+    }
+
+    @Override
+    public double calculatePerimeter(){
+
+        return 2 * (width + length);
+    }
+}
+
+public class Circle extends Shape {
+
+    public Circle( double radius) {
+
+        this.radius = radius;
+    }
+
+    private double radius;
+
+    @Override
+    public double calculateArea(){
+
+        return Math.PI * this.radius * this.radius;
+    }
+
+    @Override
+    public double calculatePerimeter(){
+
+        return  Math.PI * this.radius * 2;
+    }
+}
+
+public class Square extends Shape {
+
+    public Square( double sideLength) {
+
+        this.sideLength = sideLength;
+    }
+    private double sideLength;
+
+    @Override
+    public double calculateArea(){
+
+        return sideLength * sideLength;
+    }
+
+    @Override
+    public double calculatePerimeter(){
+
+        return sideLength * 4;
+    }
+}
