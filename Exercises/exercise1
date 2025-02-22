@@ -1,1 +1,142 @@
+import java.util.*;
 
+abstract class Student {
+    protected String name;
+    protected ArrayList<Double> quizScores;
+
+    public Student(String name) {
+        this.name = name;
+        this.quizScores = new ArrayList<>(15);
+    }
+
+    public void addQuizScore(double score) {
+        if (quizScores.size() < 15) {
+            quizScores.add(score);
+        }
+    }
+
+    public abstract double calculateAverage();
+}
+
+class PartTimeStudent extends Student {
+    public PartTimeStudent(String name) {
+        super(name);
+    }
+
+    @Override
+    public double calculateAverage() {
+        return quizScores.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+    }
+}
+
+class FullTimeStudent extends Student {
+    private double exam1Score;
+    private double exam2Score;
+
+    public FullTimeStudent(String name) {
+        super(name);
+    }
+
+    public void setExamScores(double exam1Score, double exam2Score) {
+        this.exam1Score = exam1Score;
+        this.exam2Score = exam2Score;
+    }
+
+    @Override
+    public double calculateAverage() {
+        double quizAverage = quizScores.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+        return (quizAverage + exam1Score + exam2Score) / 3;
+    }
+
+    public String getExamScores() {
+        return String.format("Exam 1: %.2f, Exam 2: %.2f", exam1Score, exam2Score);
+    }
+}
+
+class Session {
+    private ArrayList<Student> students;
+
+    public Session() {
+        students = new ArrayList<>(20);
+    }
+
+    public void addStudent(Student student) {
+        if (students.size() < 20) {
+            students.add(student);
+        }
+    }
+
+    public void calculateAndPrintAverages() {
+        System.out.println("Average quiz scores for all students:");
+        for (Student student : students) {
+            System.out.printf("%s: %.2f\n", student.name, student.calculateAverage());
+        }
+    }
+
+    public void printQuizScoresAscending() {
+        System.out.println("Quiz scores in ascending order:");
+        ArrayList<Double> allScores = new ArrayList<>();
+        for (Student student : students) {
+            allScores.addAll(student.quizScores);
+        }
+        Collections.sort(allScores);
+        System.out.println(allScores);
+    }
+
+    public void printPartTimeStudentNames() {
+        System.out.println("Part-time student names:");
+        for (Student student : students) {
+            if (student instanceof PartTimeStudent) {
+                System.out.println(student.name);
+            }
+        }
+    }
+
+    public void printFullTimeStudentExamScores() {
+        System.out.println("Full-time student exam scores:");
+        for (Student student : students) {
+            if (student instanceof FullTimeStudent) {
+                FullTimeStudent fullTimeStudent = (FullTimeStudent) student;
+                System.out.printf("%s: %s\n", student.name, fullTimeStudent.getExamScores());
+            }
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        Session session = new Session();
+        Random random = new Random();
+
+        // Create and add 20 students
+        for (int i = 0; i < 20; i++) {
+            Student student;
+            if (i % 2 == 0) {
+                student = new PartTimeStudent("PartTime-" + i);
+            } else {
+                FullTimeStudent fullTimeStudent = new FullTimeStudent("FullTime-" + i);
+                fullTimeStudent.setExamScores(random.nextDouble() * 100, random.nextDouble() * 100);
+                student = fullTimeStudent;
+            }
+
+            // Add 15 quiz scores
+            for (int j = 0; j < 15; j++) {
+                student.addQuizScore(random.nextDouble() * 100);
+            }
+
+            session.addStudent(student);
+        }
+
+        // Call all public methods of Session
+        session.calculateAndPrintAverages();
+        System.out.println();
+
+        session.printQuizScoresAscending();
+        System.out.println();
+
+        session.printPartTimeStudentNames();
+        System.out.println();
+
+        session.printFullTimeStudentExamScores();
+    }
+}
