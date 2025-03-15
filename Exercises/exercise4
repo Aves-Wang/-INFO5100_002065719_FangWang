@@ -1,1 +1,67 @@
+import java.util.regex.*;
+import java.util.Arrays;
+
+public class RegexDemo {
+    public static void main(String[] args) {
+        // 1. Vowel check using character class [aeiou]
+        testPattern("Vowel check", "[aeiou]", 
+                   "apple", true,    // Contains vowels
+                   "xyz", false);    // No vowels
+
+        // 2. Integer validation (positive/negative/zero without leading zeros)
+        testPattern("Integer validation", "^-?(0|[1-9]\\d*)$", 
+                   "-123", true,     // Valid negative
+                   "+45", false);    // Invalid positive with '+'
+
+        // 3. Start/end anchors with .* quantifier
+        testPattern("Start/end anchors", "^The.*dog\\.$", 
+                   "The lazy dog.", true,  // Matches pattern
+                   "The quick fox", false);// Doesn't end with dog.
+
+        // 4. Alternation (OR) operator
+        testPattern("Alternation", "cat|dog", 
+                   "pet cat", true,  // Contains 'cat'
+                   "parrot", false); // No match
+
+        // 5. 5-digit code with word boundaries
+        testPattern("5-digit code", "\\b\\d{5}\\b", 
+                   "95050", true,    // Valid ZIP
+                   "1234", false);   // Too short
+
+        // Bonus: Split and replace operations
+        splitDemo("\\W+", "apple,banana;cherry|date");
+        replaceDemo("\\d{4}", "Card: 1234-5678-9012-3456", "XXXX");
+    }
+
+    private static void testPattern(String testName, String pattern, 
+                                   String posSubject, boolean posExpected,
+                                   String negSubject, boolean negExpected) {
+        System.out.println("=== " + testName + " ===");
+        testRegex(pattern, posSubject, posExpected);
+        testRegex(pattern, negSubject, negExpected);
+        System.out.println();
+    }
+
+    private static void testRegex(String pattern, String subject, boolean expected) {
+        boolean result = Pattern.compile(pattern).matcher(subject).find();
+        String status = result == expected ? "PASS" : "FAIL";
+        System.out.printf("[%s] Pattern: %-20s Subject: %-15s Expected: %-5s%n",
+                status, pattern, "\"" + subject + "\"", expected);
+    }
+
+    private static void splitDemo(String pattern, String input) {
+        System.out.println("\n=== Splitting Demo ===");
+        System.out.println("Pattern: " + pattern);
+        System.out.println("Input: " + input);
+        Arrays.stream(input.split(pattern))
+              .forEach(s -> System.out.println("  " + s));
+    }
+
+    private static void replaceDemo(String pattern, String input, String replacement) {
+        System.out.println("\n=== Replacement Demo ===");
+        System.out.println("Pattern: " + pattern);
+        System.out.println("Original: " + input);
+        System.out.println("Modified: " + input.replaceAll(pattern, replacement));
+    }
+}
 
