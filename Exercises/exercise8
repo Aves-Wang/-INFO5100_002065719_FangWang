@@ -1,1 +1,153 @@
+import org.w3c.dom.*;
+import javax.xml.parsers.*;
+import javax.xml.transform.*;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import java.io.*;
 
+public class XMLBookShelfParser {
+    public static void main(String[] args) {
+        try {
+            File inputFile = new File("bookshelf.xml");
+            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.parse(inputFile);
+            doc.getDocumentElement().normalize();
+
+            System.out.println("Root element: " + doc.getDocumentElement().getNodeName());
+            NodeList nList = doc.getElementsByTagName("Book");
+            
+            for (int temp = 0; temp < nList.getLength(); temp++) {
+                Node nNode = nList.item(temp);
+                if (nNode.getNodeType() == Node.ELEMENT_NODE) {
+                    Element eElement = (Element) nNode;
+                    System.out.println("\nBook:");
+                    System.out.println("Title: " + eElement.getElementsByTagName("title").item(0).getTextContent());
+                    System.out.println("Published Year: " + eElement.getElementsByTagName("publishedYear").item(0).getTextContent());
+                    System.out.println("Number of Pages: " + eElement.getElementsByTagName("numberOfPages").item(0).getTextContent());
+                    System.out.println("Authors: " + eElement.getElementsByTagName("authors").item(0).getTextContent());
+                }
+            }
+
+            // Add a new book
+            Element newBook = doc.createElement("Book");
+            Element title = doc.createElement("title");
+            title.appendChild(doc.createTextNode("New Book Title"));
+            Element publishedYear = doc.createElement("publishedYear");
+            publishedYear.appendChild(doc.createTextNode("2023"));
+            Element numberOfPages = doc.createElement("numberOfPages");
+            numberOfPages.appendChild(doc.createTextNode("300"));
+            Element authors = doc.createElement("authors");
+            authors.appendChild(doc.createTextNode("New Author 1, New Author 2"));
+
+            newBook.appendChild(title);
+            newBook.appendChild(publishedYear);
+            newBook.appendChild(numberOfPages);
+            newBook.appendChild(authors);
+
+            doc.getDocumentElement().appendChild(newBook);
+
+            // Print updated document
+            System.out.println("\nUpdated XML:");
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            DOMSource source = new DOMSource(doc);
+            StreamResult result = new StreamResult(System.out);
+            transformer.transform(source, result);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+public class JSONBookShelfParser {
+    public static void main(String[] args) {
+        try {
+            String content = new String(Files.readAllBytes(Paths.get("bookshelf.json")));
+            JSONObject jsonObject = new JSONObject(content);
+            JSONArray books = jsonObject.getJSONArray("BookShelf");
+
+            for (int i = 0; i < books.length(); i++) {
+                JSONObject book = books.getJSONObject(i);
+                System.out.println("\nBook:");
+                System.out.println("Title: " + book.getString("title"));
+                System.out.println("Published Year: " + book.getInt("publishedYear"));
+                System.out.println("Number of Pages: " + book.getInt("numberOfPages"));
+                System.out.println("Authors: " + String.join(", ", book.getJSONArray("authors").toList().stream().map(Object::toString).toArray(String[]::new)));
+            }
+
+            // Add a new book
+            JSONObject newBook = new JSONObject();
+            newBook.put("title", "New JSON Book");
+            newBook.put("publishedYear", 2023);
+            newBook.put("numberOfPages", 400);
+            JSONArray newAuthors = new JSONArray();
+            newAuthors.put("New JSON Author 1");
+            newAuthors.put("New JSON Author 2");
+            newBook.put("authors", newAuthors);
+
+            books.put(newBook);
+
+            // Print updated JSON
+            System.out.println("\nUpdated JSON:");
+            System.out.println(jsonObject.toString(2));
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<BookShelf>
+    <Book>
+        <title>The Great Gatsby</title>
+        <publishedYear>1925</publishedYear>
+        <numberOfPages>180</numberOfPages>
+        <authors>F. Scott Fitzgerald</authors>
+    </Book>
+    <Book>
+        <title>To Kill a Mockingbird</title>
+        <publishedYear>1960</publishedYear>
+        <numberOfPages>281</numberOfPages>
+        <authors>Harper Lee</authors>
+    </Book>
+    <Book>
+        <title>1984</title>
+        <publishedYear>1949</publishedYear>
+        <numberOfPages>328</numberOfPages>
+        <authors>George Orwell</authors>
+    </Book>
+</BookShelf>
+
+{
+  "BookShelf": [
+    {
+      "title": "The Great Gatsby",
+      "publishedYear": 1925,
+      "numberOfPages": 180,
+      "authors": ["F. Scott Fitzgerald"]
+    },
+    {
+      "title": "To Kill a Mockingbird",
+      "publishedYear": 1960,
+      "numberOfPages": 281,
+      "authors": ["Harper Lee"]
+    },
+    {
+      "title": "1984",
+      "publishedYear": 1949,
+      "numberOfPages": 328,
+      "authors": ["George Orwell"]
+    }
+  ]
+}
