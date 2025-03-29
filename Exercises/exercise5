@@ -1,1 +1,154 @@
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+
+// ======================
+// 1. FACTORY PATTERN (Payment Processing)
+// ======================
+interface PaymentMethod {
+    void processPayment(double amount);
+}
+
+class CreditCardPayment implements PaymentMethod {
+    public void processPayment(double amount) {
+        System.out.printf("Processing $%.2f via Credit Card\n", amount);
+    }
+}
+
+class PayPalPayment implements PaymentMethod {
+    public void processPayment(double amount) {
+        System.out.printf("Processing $%.2f via PayPal\n", amount);
+    }
+}
+
+class PaymentFactory {
+    public static PaymentMethod createPayment(String type) {
+        return switch (type.toLowerCase()) {
+            case "credit" -> new CreditCardPayment();
+            case "paypal" -> new PayPalPayment();
+            default -> throw new IllegalArgumentException("Invalid payment type");
+        };
+    }
+}
+
+// ======================
+// 2. OBSERVER PATTERN (Newsletter Subscription)
+// ======================
+interface Subscriber {
+    void update(String newsletter);
+}
+
+class NewsletterSubject {
+    private final List<Subscriber> subscribers = new ArrayList<>();
+    private String latestEdition;
+
+    public void subscribe(Subscriber s) {
+        subscribers.add(s);
+        System.out.println("New subscriber added!");
+    }
+
+    public void publish(String content) {
+        this.latestEdition = content;
+        notifySubscribers();
+    }
+
+    private void notifySubscribers() {
+        subscribers.forEach(s -> s.update(latestEdition));
+    }
+}
+
+class EmailSubscriber implements Subscriber {
+    private final String email;
+    
+    public EmailSubscriber(String email) {
+        this.email = email;
+    }
+
+    public void update(String newsletter) {
+        System.out.printf("[Observer] Email to %s: %s\n", email, newsletter);
+    }
+}
+
+// ======================
+// 3. STRATEGY PATTERN (Discount Calculation)
+// ======================
+interface DiscountStrategy {
+    double applyDiscount(double originalPrice);
+}
+
+class PercentageDiscount implements DiscountStrategy {
+    private final double percentage;
+    
+    public PercentageDiscount(double percentage) {
+        this.percentage = percentage;
+    }
+
+    public double applyDiscount(double originalPrice) {
+        return originalPrice * (1 - percentage/100);
+    }
+}
+
+class FixedDiscount implements DiscountStrategy {
+    private final double amount;
+    
+    public FixedDiscount(double amount) {
+        this.amount = amount;
+    }
+
+    public double applyDiscount(double originalPrice) {
+        return Math.max(0, originalPrice - amount);
+    }
+}
+
+class ShoppingCart {
+    private DiscountStrategy strategy;
+    private double total;
+
+    public ShoppingCart(DiscountStrategy strategy) {
+        this.strategy = strategy;
+    }
+
+    public void setStrategy(DiscountStrategy strategy) {
+        this.strategy = strategy;
+    }
+
+    public void addItem(double price) {
+        total += price;
+    }
+
+    public void checkout() {
+        double finalAmount = strategy.applyDiscount(total);
+        System.out.printf("[Strategy] Total: $%.2f | After discount: $%.2f\n", total, finalAmount);
+    }
+}
+
+// ======================
+// MAIN DEMONSTRATION
+// ======================
+public class DesignPatternsDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        
+        // Factory Pattern Demo
+        System.out.println("\n=== Payment Factory ===");
+        System.out.print("Enter payment type (credit/paypal): ");
+        PaymentMethod payment = PaymentFactory.createPayment(scanner.nextLine());
+        payment.processPayment(99.99);
+
+        // Observer Pattern Demo
+        NewsletterSubject newsletter = new NewsletterSubject();
+        newsletter.subscribe(new EmailSubscriber("john@example.com"));
+        newsletter.subscribe(new EmailSubscriber("sara@example.com"));
+        newsletter.publish("Spring Sale: 50% Off Everything!");
+
+        // Strategy Pattern Demo
+        ShoppingCart cart = new ShoppingCart(new PercentageDiscount(20));
+        cart.addItem(45.99);
+        cart.addItem(29.99);
+        cart.checkout();
+        
+        cart.setStrategy(new FixedDiscount(15));
+        cart.checkout();
+    }
+}
 
