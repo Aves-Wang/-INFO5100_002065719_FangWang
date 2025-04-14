@@ -1,1 +1,105 @@
+import javax.crypto.*;
+import javax.crypto.spec.*;
+import java.security.*;
+import java.util.Base64;
+
+public class SecureCommunication {
+
+    // Generate AES-256 key for symmetric encryption
+    public static SecretKey generateAESKey() throws NoSuchAlgorithmException {
+        KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+        keyGen.init(256);
+        return keyGen.generateKey();
+    }
+
+    // Generate RSA-2048 key pair for asymmetric encryption
+    public static KeyPair generateRSAKeyPair() throws NoSuchAlgorithmException {
+        KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
+        keyPairGen.initialize(2048);
+        return keyPairGen.generateKeyPair();
+    }
+
+    // AES-256/GCM symmetric encryption
+    public static String[] encryptWithAES(String plaintext, SecretKey key) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        byte[] iv = new byte[12]; // 96-bit IV
+        SecureRandom.getInstanceStrong().nextBytes(iv);
+        
+        GCMParameterSpec spec = new GCMParameterSpec(128, iv);
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+        
+        byte[] ciphertext = cipher.doFinal(plaintext.getBytes());
+        return new String[] {
+            Base64.getEncoder().encodeToString(ciphertext),
+            Base64.getEncoder().encodeToString(iv)
+        };
+    }
+
+    // AES-256/GCM symmetric decryption
+    public static String decryptWithAES(String[] encryptedData, SecretKey key) throws Exception {
+        byte[] ciphertext = Base64.getDecoder().decode(encryptedData[0]);
+        byte[] iv = Base64.getDecoder().decode(encryptedData[1]);
+        
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        GCMParameterSpec spec = new GCMParameterSpec(128, iv);
+        cipher.init(Cipher.DECRYPT_MODE, key, spec);
+        
+        return new String(cipher.doFinal(ciphertext));
+    }
+
+    // RSA-2048 asymmetric encryption
+    public static String encryptWithRSA(String plaintext, PublicKey publicKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+        return Base64.getEncoder().encodeToString(cipher.doFinal(plaintext.getBytes()));
+    }
+
+    // RSA-2048 asymmetric decryption
+    public static String decryptWithRSA(String ciphertext, PrivateKey privateKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        cipher.init(Cipher.DECRYPT_MODE, privateKey);
+        return new String(cipher.doFinal(Base64.getDecoder().decode(ciphertext)));
+    }
+
+    // Create digital signature
+    public static String signMessage(String message, PrivateKey privateKey) throws Exception {
+        Signature signature = Signature.getInstance("SHA256withRSA");
+        signature.initSign(privateKey);
+        signature.update(message.getBytes());
+        return Base64.getEncoder().encodeToString(signature.sign());
+    }
+
+    // Verify digital signature
+    public static boolean verifySignature(String message, String signature, PublicKey publicKey) throws Exception {
+        Signature sig = Signature.getInstance("SHA256withRSA");
+        sig.initVerify(publicKey);
+        sig.update(message.getBytes());
+        return sig.verify(Base64.getDecoder().decode(signature));
+    }
+
+    public static void main(String[] args) throws Exception {
+        // Generate keys
+        SecretKey aesKey = generateAESKey();
+        KeyPair aliceKeys = generateRSAKeyPair();
+        KeyPair bobKeys = generateRSAKeyPair();
+
+        String originalMessage = "Confidential message from Alice to Bob";
+        System.out.println("Original message: " + originalMessage);
+
+        // Symmetric encryption demo
+        String[] aesEncrypted = encryptWithAES(originalMessage, aesKey);
+        String aesDecrypted = decryptWithAES(aesEncrypted, aesKey);
+        System.out.println("\nSymmetric decryption: " + aesDecrypted);
+
+        // Asymmetric encryption demo
+        String rsaEncrypted = encryptWithRSA(originalMessage, bobKeys.getPublic());
+        String rsaDecrypted = decryptWithRSA(rsaEncrypted, bobKeys.getPrivate());
+        System.out.println("\nAsymmetric decryption: " + rsaDecrypted);
+
+        // Digital signature demo
+        String signature = signMessage(originalMessage, aliceKeys.getPrivate());
+        boolean isValid = verifySignature(originalMessage, signature, aliceKeys.getPublic());
+        System.out.println("\nSignature verification: " + (isValid ? "Valid" : "Invalid"));
+    }
+}
 
