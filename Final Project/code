@@ -1,1 +1,346 @@
+package com.example.imageconvertor;
 
+import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+
+import java.io.IOException;
+import java.net.URL;
+
+public class HelloApplication extends Application {
+    @Override
+    public void start(Stage primaryStage) throws IOException {
+        URL fxmlLocation = getClass().getResource("/com/example/imageconvertor/MainView.fxml");
+        if (fxmlLocation == null) {
+            throw new IOException("Cannot find MainView.fxml in resources");
+        }
+        FXMLLoader loader = new FXMLLoader(fxmlLocation);
+        Parent root = loader.load();
+        Scene scene = new Scene(root, 768, 600);
+        primaryStage.setScene(scene);
+        primaryStage.setTitle("Image Management Tool");
+        primaryStage.show();
+
+
+    }
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+}
+package com.example.imageconvertor;
+
+import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.VBox;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
+import javax.imageio.ImageIO;
+import javafx.embed.swing.SwingFXUtils;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+public class MainController {
+    @FXML private VBox thumbnailBox;
+    @FXML private ScrollPane thumbnailScrollPane;
+    @FXML private ComboBox<String> formatComboBox;
+    @FXML private ComboBox<String> filterComboBox;
+    @FXML private Label propLabel;
+    @FXML private Button uploadButton, convertButton, downloadButton;
+
+    private List<File> loadedFiles = new ArrayList<>();
+    private List<ImageMetaData> metaDataList = new ArrayList<>();
+    private List<File> convertedFiles = new ArrayList<>();
+
+    @FXML
+    public void initialize() {
+        formatComboBox.getItems().addAll("jpg", "png", "bmp");
+        filterComboBox.getItems().addAll("None", "Grayscale", "Sepia");
+        filterComboBox.getSelectionModel().select("None");
+        downloadButton.setDisable(true);
+    }
+
+    @FXML
+    public void onUploadClicked(ActionEvent event) {
+        FileChooser fc = new FileChooser();
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Image Files", "*.jpg", "*.jpeg", "*.png", "*.bmp"));
+        List<File> files = fc.showOpenMultipleDialog(null);
+        if (files != null) {
+            loadedFiles.clear();
+            metaDataList.clear();
+            thumbnailBox.getChildren().clear();
+            convertedFiles.clear();
+            downloadButton.setDisable(true);
+            for (File file : files) {
+                try {
+                    BufferedImage imgBuf = ImageIO.read(file);
+                    if (imgBuf == null) throw new Exception("File is not a valid image");
+                    Image fxImg = SwingFXUtils.toFXImage(imgBuf, null);
+                    ImageView thumb = new ImageView(fxImg);
+                    thumb.setPreserveRatio(true);
+                    thumb.setFitWidth(100);
+                    thumb.setFitHeight(100);
+                    thumbnailBox.getChildren().add(thumb);
+                    ImageMetaData meta = getMeta(file, imgBuf);
+                    metaDataList.add(meta);
+                    loadedFiles.add(file);
+                    updatePropertiesDisplay();
+                } catch (Exception e) {
+                    showError(e.getMessage());
+                }
+            }
+            adjustStageSize();
+        }
+    }
+
+    @FXML
+    public void onConvertClicked(ActionEvent event) {
+        String fmt = formatComboBox.getSelectionModel().getSelectedItem();
+        String filter = filterComboBox.getSelectionModel().getSelectedItem();
+        if (fmt == null || loadedFiles.isEmpty()) {
+            showError("Please select a format and upload at least one image.");
+            return;
+        }
+        convertedFiles.clear();
+        for (File file : loadedFiles) {
+            try {
+                BufferedImage img = ImageIO.read(file);
+                if (img == null) throw new Exception("File is not a valid image");
+                // Apply filter if selected
+                if (!filter.equals("None")) {
+                    ImageFilter imageFilter = getFilter(filter);
+                    img = imageFilter.apply(img);
+                }
+                // Convert format
+                ImageConverter converter = null;
+                switch (fmt.toLowerCase()) {
+                    case "jpg": converter = new JPGConverter(); break;
+                    case "png": converter = new PNGConverter(); break;
+                    case "bmp": converter = new BMPConverter(); break;
+                }
+                if (converter != null) {
+                    BufferedImage outImg = converter.convert(img, fmt);
+                    File outFile = new File(file.getParent(), file.getName() + "_converted." + fmt);
+                    ImageIO.write(outImg, fmt, outFile);
+                    convertedFiles.add(outFile);
+                    showInfo("Converted: " + outFile.getName());
+                }
+            } catch (Exception ex) {
+                showError("Failed to convert " + file.getName() + ": " + ex.getMessage());
+            }
+        }
+        downloadButton.setDisable(convertedFiles.isEmpty());
+    }
+
+    @FXML
+    public void onDownloadClicked(ActionEvent event) {
+        if (convertedFiles.isEmpty()) {
+            showError("No converted files to download.");
+            return;
+        }
+        DirectoryChooser dc = new DirectoryChooser();
+        dc.setTitle("Select Download Directory");
+        File dir = dc.showDialog(null);
+        if (dir != null) {
+            for (File file : convertedFiles) {
+                try {
+                    File dest = new File(dir, file.getName());
+                    java.nio.file.Files.copy(file.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    showInfo("Downloaded: " + dest.getName());
+                } catch (Exception e) {
+                    showError("Failed to download " + file.getName() + ": " + e.getMessage());
+                }
+            }
+        }
+    }
+
+    private ImageMetaData getMeta(File file, BufferedImage img) {
+        int w = img.getWidth();
+        int h = img.getHeight();
+        return new ImageMetaData(w, h, "Unknown", "Unknown");
+    }
+
+    private void updatePropertiesDisplay() {
+        StringBuilder props = new StringBuilder();
+        for (int i = 0; i < metaDataList.size(); i++) {
+            ImageMetaData meta = metaDataList.get(i);
+            props.append("File: ").append(loadedFiles.get(i).getName())
+                    .append("\nSize: ").append(meta.getWidth()).append("x").append(meta.getHeight())
+                    .append("\nCamera: ").append(meta.getCamera())
+                    .append("\nLocation: ").append(meta.getLocation())
+                    .append("\n\n");
+        }
+        propLabel.setText(props.length() > 0 ? props.toString() : "No image loaded");
+    }
+
+    private ImageFilter getFilter(String filterName) {
+        switch (filterName) {
+            case "Grayscale":
+                return new GrayscaleFilter();
+            case "Sepia":
+                return new SepiaFilter();
+            default:
+                return img -> img; // No-op filter
+        }
+    }
+
+    private void adjustStageSize() {
+        Stage stage = (Stage) thumbnailBox.getScene().getWindow();
+        int thumbnailCount = thumbnailBox.getChildren().size();
+        // Each thumbnail is 100px tall + 10px spacing
+        double thumbnailHeight = thumbnailCount * (100 + 10);
+        // Estimate height for other UI elements (HBox, Label, padding)
+        double otherElementsHeight = 250; // Approximate height of HBox, Label, and padding
+        double totalHeight = thumbnailHeight + otherElementsHeight;
+        // Cap at 5 thumbnails to avoid excessive window size
+        double maxHeight = 5 * (100 + 10) + otherElementsHeight;
+        double newHeight = Math.min(totalHeight, maxHeight);
+        // Set minimum width to accommodate thumbnails and UI elements
+        double newWidth = Math.max(stage.getWidth(), 600); // Ensure enough width for UI
+        stage.setMinHeight(newHeight);
+        stage.setHeight(newHeight);
+        stage.setMinWidth(newWidth);
+        // Center the stage after resizing
+        stage.centerOnScreen();
+    }
+
+    private void showError(String msg) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK);
+        alert.showAndWait();
+    }
+
+    private void showInfo(String msg) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION, msg, ButtonType.OK);
+        alert.showAndWait();
+    }
+}
+package com.example.imageconvertor;
+
+public class ImageMetaData {
+    private int width, height;
+    private String camera, location;
+
+    public ImageMetaData(int width, int height, String camera, String location) {
+        this.width = width;
+        this.height = height;
+        this.camera = camera;
+        this.location = location;
+    }
+
+    public int getWidth() { return width; }
+    public int getHeight() { return height; }
+    public String getCamera() { return camera; }
+    public String getLocation() { return location; }
+}
+package com.example.imageconvertor;
+
+import java.awt.image.BufferedImage;
+
+public abstract class ImageConverter {
+    public abstract BufferedImage convert(BufferedImage img, String format) throws Exception;
+}
+package com.example.imageconvertor;
+
+import java.awt.image.BufferedImage;
+
+public class BMPConverter extends ImageConverter {
+    @Override
+    public BufferedImage convert(BufferedImage img, String format) throws Exception {
+        // BMP doesn’t support transparency, so use RGB type
+        BufferedImage result = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_INT_RGB);
+        result.getGraphics().drawImage(img, 0, 0, null);
+        return result;
+    }
+}
+package com.example.imageconvertor;
+
+import java.awt.image.BufferedImage;
+
+public class JPGConverter extends ImageConverter {
+    @Override
+    public BufferedImage convert(BufferedImage img, String format) throws Exception {
+        // Ensure RGB type for JPG compatibility
+        BufferedImage result = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_INT_RGB);
+        result.getGraphics().drawImage(img, 0, 0, null);
+        return result;
+    }
+}
+package com.example.imageconvertor;
+
+import java.awt.image.BufferedImage;
+
+public class PNGConverter extends ImageConverter {
+    @Override
+    public BufferedImage convert(BufferedImage img, String format) {
+        // For demonstration, return itself (could add specific conversion logic)
+        return img;
+    }
+}
+package com.example.imageconvertor;
+
+import java.awt.image.BufferedImage;
+
+public interface ImageFilter {
+    BufferedImage apply(BufferedImage img);
+}
+package com.example.imageconvertor;
+
+import java.awt.image.BufferedImage;
+
+public class GrayscaleFilter implements ImageFilter {
+    @Override
+    public BufferedImage apply(BufferedImage img) {
+        int width = img.getWidth();
+        int height = img.getHeight();
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int rgb = img.getRGB(x, y);
+                int r = (rgb >> 16) & 0xFF;
+                int g = (rgb >> 8) & 0xFF;
+                int b = rgb & 0xFF;
+                int gray = (r + g + b) / 3;
+                int newRgb = (gray << 16) | (gray << 8) | gray;
+                result.setRGB(x, y, newRgb);
+            }
+        }
+        return result;
+    }
+}
+package com.example.imageconvertor;
+
+import java.awt.image.BufferedImage;
+
+public class SepiaFilter implements ImageFilter {
+    @Override
+    public BufferedImage apply(BufferedImage img) {
+        int width = img.getWidth();
+        int height = img.getHeight();
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int rgb = img.getRGB(x, y);
+                int r = (rgb >> 16) & 0xFF;
+                int g = (rgb >> 8) & 0xFF;
+                int b = rgb & 0xFF;
+                int newR = (int) (0.393 * r + 0.769 * g + 0.189 * b);
+                int newG = (int) (0.349 * r + 0.686 * g + 0.168 * b);
+                int newB = (int) (0.272 * r + 0.534 * g + 0.131 * b);
+                newR = Math.min(255, Math.max(0, newR));
+                newG = Math.min(255, Math.max(0, newG));
+                newB = Math.min(255, Math.max(0, newB));
+                int newRgb = (newR << 16) | (newG << 8) | newB;
+                result.setRGB(x, y, newRgb);
+            }
+        }
+        return result;
+    }
+}
