@@ -1,1 +1,84 @@
+@startuml
+package com.example.imageconvertor {
+    class HelloApplication {
+        +start(Stage): void
+        +main(String[]): void
+    }
+
+    abstract class ImageConverter {
+        +convert(BufferedImage, String): BufferedImage
+    }
+
+    interface ImageFilter {
+        +apply(BufferedImage): BufferedImage
+    }
+
+    class BMPConverter extends ImageConverter {
+        +convert(BufferedImage, String): BufferedImage
+    }
+
+    class JPGConverter extends ImageConverter {
+        +convert(BufferedImage, String): BufferedImage
+    }
+
+    class PNGConverter extends ImageConverter {
+        +convert(BufferedImage, String): BufferedImage
+    }
+
+    class GrayscaleFilter implements ImageFilter {
+        +apply(BufferedImage): BufferedImage
+    }
+
+    class SepiaFilter implements ImageFilter {
+        +apply(BufferedImage): BufferedImage
+    }
+
+    class ImageMetaData {
+        -width: int
+        -height: int
+        -camera: String
+        -location: String
+        +getWidth(): int
+        +getHeight(): int
+        +getCamera(): String
+        +getLocation(): String
+        +ImageMetaData(int, int, String, String)
+    }
+
+    class MainController {
+        -thumbnailBox: VBox
+        -thumbnailScrollPane: ScrollPane
+        -formatComboBox: ComboBox
+        -filterComboBox: ComboBox
+        -propLabel: Label
+        -uploadButton: Button
+        -convertButton: Button
+        -downloadButton: Button
+        -loadedFiles: List<File>
+        -metaDataList: List<ImageMetaData>
+        -convertedFiles: List<File>
+        +initialize(): void
+        +onUploadClicked(ActionEvent): void
+        +onConvertClicked(ActionEvent): void
+        +onDownloadClicked(ActionEvent): void
+        -getMeta(File, BufferedImage): ImageMetaData
+        -updatePropertiesDisplay(): void
+        -getFilter(String): ImageFilter
+        -adjustStageSize(): void
+        -showError(String): void
+        -showInfo(String): void
+    }
+
+    HelloApplication -- MainController : uses
+    MainController -- ImageMetaData : uses
+    MainController -- ImageConverter : uses
+    MainController -- ImageFilter : uses
+    ImageConverter <|-- BMPConverter
+    ImageConverter <|-- JPGConverter
+    ImageConverter <|-- PNGConverter
+    ImageFilter <|-- GrayscaleFilter
+    ImageFilter <|-- SepiaFilter
+
+}
+@enduml
 
